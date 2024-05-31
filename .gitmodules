@@ -1,0 +1,3 @@
+[submodule "LithosphereRocketry.github.io"]
+	path = LithosphereRocketry.github.io
+	url = git@github.com:LithosphereRocketry/LithosphereRocketrySiteSource.git
