@@ -6,9 +6,11 @@ from os import path
 
 parser = argparse.ArgumentParser(
     prog='buildpage',
-    description=('A slightly hacky program to generate static HTML pages from'\
+    description=('A slightly hacky program to generate static HTML pages from '\
                  'templates. Templates are included with a custom tag: '\
-                 '<embed-file src=\'my-file.html\'></embed-file>')
+                 '<embed-file src=\'my-file.html\'></embed-file>. Embeds may '\
+                 'be recursively mapped, but the program will probably fail in'\
+                 ' nasty ways if given an infinitely recursive page.')
 )
 
 parser.add_argument('-t', '--template',
@@ -29,7 +31,8 @@ parser.add_argument('-p', '--search-path',
     type=str
 )
 parser.add_argument('-d', '--dependencies',
-    help='Generates a list of dependencies instead of a complete file',
+    help='Generates a list of dependencies instead of a complete file - '\
+        'does not search recursively (yet)',
     dest='deponly',
     action='store_true'
 )
@@ -52,10 +55,13 @@ if args.defines is None:
     defs = {}
 else:
     defs = {name: value for [name, value] in args.defines}
-mappings = {tag: tag.get('src') for tag in tree.iterfind('.//embed-file')}
-defmappings = {tag: defs[name] if name in defs else name
-               for tag, name in mappings.items()}
 text = ''
+
+def get_subs(defs, root):
+    mappings = {tag: tag.get('src') for tag in root.iterfind('.//embed-file')}
+    return {tag: defs[name] if name in defs else name
+            for tag, name in mappings.items()}
+
 
 def find_paths(paths, fname):
     for p in paths:
@@ -75,17 +81,22 @@ def read_paths(paths, fname):
 
 
 if args.deponly:
+    defmappings = get_subs(defs, tree)
     text = '\n'.join(defmappings.values())
 else:
-    pathmaps = {p: read_paths(paths, p) for p in defmappings.values()}
-    for tag, name in defmappings.items():
-        if pathmaps[name] is None:
-            print('File ' + name + ' not found')
-            exit(-1)
-        for frag in html.fragments_fromstring(pathmaps[name]):
-            tag.addprevious(frag)
-        tag.getparent().remove(tag)
-    text = html.tostring(tree).decode()
+    while True:
+        defmappings = get_subs(defs, tree)
+        if len(defmappings) == 0:
+            break
+        pathmaps = {p: read_paths(paths, p) for p in defmappings.values()}
+        for tag, name in defmappings.items():
+            if pathmaps[name] is None:
+                print('File ' + name + ' not found')
+                exit(-1)
+            for frag in html.fragments_fromstring(pathmaps[name]):
+                tag.addprevious(frag)
+            tag.getparent().remove(tag)
+        text = html.tostring(tree).decode()
 
 if args.dstfile == None:
     print(text)

@@ -3,12 +3,12 @@
 OUTDIR = LithosphereRocketry.github.io
 MDHDIR = md-html
 MDDIR = md-pages
-TILESDIR = tiles
+TITLESDIR = titles
 PARTSDIR = parts
 TEMPLATESDIR = templates
 DEPDIR = embed-deps
 
-DIRS = $(MDHDIR)
+DIRS = $(MDHDIR) $(TITLESDIR)
 
 PROJNAMES = website
 
@@ -26,14 +26,17 @@ $(PYGMENT):
 $(MDHDIR)/%.html: $(MDDIR)/%.md | $(MDHDIR)
 	python -m markdown -x fenced_code -x codehilite -x toc -f $@ < $<
 
+$(TITLESDIR)/%.html: mktitle.py titles.cfg | $(TITLESDIR)
+	./mktitle.py $*
+
 $(DIRS): %:
 	mkdir $@
 
-$(PROJTARGETS): $(OUTDIR)/%.html: $(MDHDIR)/%.html project-template.html $(PARTS) buildpage.py
-	./buildpage.py -t project-template.html -o $@ -D PROJECT $<
+$(PROJTARGETS): $(OUTDIR)/%.html: $(MDHDIR)/%.html $(TITLESDIR)/%.html project-template.html $(PARTS) buildpage.py
+	./buildpage.py -t project-template.html -o $@ -D PROJECT $< -D TITLE $(word 2, $^)
 
-$(REGTARGETS): $(OUTDIR)/%: $(TEMPLATESDIR)/% $(PARTS) buildpage.py
-	./buildpage.py -t $< -o $@
+$(REGTARGETS): $(OUTDIR)/%: $(TEMPLATESDIR)/% $(TITLESDIR)/% $(PARTS) buildpage.py
+	./buildpage.py -t $< -o $@ -D TITLE $(word 2, $^)
 
 clean:
-	rm -r $(MDHDIR) $(REGTARGETS) $(PROJTARGETS) $(PYGMENT)
+	rm -r $(DIRS) $(REGTARGETS) $(PROJTARGETS) $(PYGMENT)
