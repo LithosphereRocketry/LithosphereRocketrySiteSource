@@ -131,10 +131,12 @@ tag (`<embed-file>`) are replaced by the contents of the file pointed to by its
 `src` attribute. This was accomplished using the Python `lxml.html` library,
 which makes this kind of transformation fairly painless. One funny quirk is that
 because tags are inserted relative to the `<embed-file>` tag, they actually get
-inserted *before* it before the placeholder tag is destroyed; the last tag inserted will always be the closest to the placeholder, so inserting them after
+inserted *before* it before the placeholder tag is destroyed; the last tag
+inserted will always be the closest to the placeholder, so inserting them after
 results in them being placed in reverse order.
 
-A more advanced feature of the templating is the ability to define aliases at the command line. In order to avoid the pain of string-searching and accidental
+A more advanced feature of the templating is the ability to define aliases at
+the command line. In order to avoid the pain of string-searching and accidental
 substitution, these have to be full filenames; only embeds whose sources exactly
 match a defined alias will be substituted. The main use case for this feature is
 generating these project pages. While all the unique pages such as the homepage
