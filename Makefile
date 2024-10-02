@@ -25,8 +25,8 @@ all: $(PYGMENT) $(REGTARGETS) $(PROJTARGETS) $(ARTTARGETS)
 $(PYGMENT):
 	pygmentize -S default -f html -a .codehilite > $@
 
-$(MDHDIR)/%.html: $(MDDIR)/%.md | $(MDHDIR)
-	python -m markdown -x fenced_code -x codehilite -x toc -x footnotes -f $@ < $<
+$(MDHDIR)/%.html: $(MDDIR)/%.md md_cfg.json | $(MDHDIR)
+	python -m markdown -x fenced_code -x codehilite -x toc -x footnotes -c md_cfg.json -f $@ < $<
 
 $(TITLESDIR)/%.html: mktitle.py titles.cfg | $(TITLESDIR)
 	./mktitle.py $*

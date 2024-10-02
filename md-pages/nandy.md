@@ -116,10 +116,11 @@ was to reduce the number of states required for instruction execution; no
 instruction takes more than 2 cycles, and a large quantity (basically, anything
 that doesn't require extra memory accesses) only requires one.
 
-The one exception to the "arithmetic only happens on the accumulator" rule is
-the increment-stack-pointer operation. This is because the processor supports
-interrupts for I/O, and interrupts assume the stack to be in good working order;
-to implement `isp` from swaps would have to take up 5 instructions:
+Originally, the one exception to the "arithmetic only happens on the
+accumulator" rule was the increment-stack-pointer operation. This is because the
+processor supports interrupts for I/O, and interrupts assume the stack to be in
+good working order; to implement `isp` from swaps would have to take up 5
+instructions:
 
 ```
 dint      # Disable interrupts
@@ -131,9 +132,8 @@ eint      # Enable interrupts
 
 That's not even to mention that you might want to increment the stack pointer
 when interrupts were already disabled, so it can't even be made into a nice
-handy macro. With the way the cost and complexity of this project have gradually
-expanded, part of me still thinks it would have been worth doing, but at this
-stage it's not really something I want to mess with.
+handy macro. At this point in the project, I didn't really think this was worth
+the component-count benefit, so `isp` stayed in as an oddball.
 
 One place I did accept a bit of clunkiness to reduce the instruction set was in
 procedure calls. NANDy supports relative jumps - i.e. "go to 327 bytes after the
@@ -157,6 +157,36 @@ be neatly wrapped up in a macro:
 ```
 call func
 ```
+
+## Picking a Goal
+
+As the feature creep started to build up on this project, I realized I really
+needed to settle on a goal to keep this from dragging on forever. Originally, I
+had planned on trying to make it play Tetris, but I eventually decided against
+that, mostly for interfacing reasons - either I'd need a full-featured graphical
+output, which would be expensive and complicated, or I'd need to build a 
+specific made-for-purpose Tetris board display, which wouldn't be very
+interesting. I also considered a couple other options:
+
+* IRC client via old-school serial modem - requires learning a lot of different
+  protocols, and networking things never work
+* Scientific calculator - requires floating-point and/or high-precision math
+* Lisp interpreter - this one is pretty plausible; the only limitation is that
+  deep recursion requires some extra thought when you only have 256 bytes of
+  stack
+* Full-fledged DOS-style prompt - this would be a lot of fun, but also a *lot*
+  of added scope
+
+In the end, the thing that convinced me was someone recommending that I try the
+classic text adventure Planetfall. Planetfall and the other Infocom games are
+especially interesting in that they may be the first games written using an
+engine and virtual machine, rather than direcly to assembly. Infocom games were
+written in a human-readable, Lisp-like language called ZIL, then compiled to a
+virtual-machine bytecode called Z-Machine. This means that any computer that can
+interpret Z-Machine bytecode can in theory run any Infocom game. Being a text
+adventure, I/O can just be a serial port, and the command set was simple enough
+to implement on 8-bit computers of the time like the Atari and Commodore 64.
+Perfect for my minimal CPU!
 
 ## The Datapath
 
@@ -192,6 +222,7 @@ said was too complex originally after all.
 
 ## The I/O Dilemma
 
+Here, we pause our regular programming (heh) to discuss the I/O situation a bit.
 Originally, I designed the processor around a single 8-bit input-output port.
 This made a lot of sense when I first started developing the project; originally
 I had planned for the processor to be a lot more primitive, with only one index
@@ -221,32 +252,115 @@ want to use take an 8-bit input, and having the external logic to distinguish
 prefixes from device data would add a whole lot of complexity that I don't want
 to deal with.
 
-## Picking a Goal
+## Reconsidering `isp`
 
-As the feature creep started to build up on this project, I realized I really
-needed to settle on a goal to keep this from dragging on forever. Originally, I
-had planned on trying to make it play Tetris, but I eventually decided against
-that, mostly for interfacing reasons - either I'd need a full-featured graphical
-output, which would be expensive and complicated, or I'd need to build a 
-specific made-for-purpose Tetris board display, which wouldn't be very
-interesting. I also considered a couple other options:
+Drawing out the datapath diagrams really made me wonder how much I could save by
+getting rid of that `isp` instruction, and how much it would really cost me in
+terms of performance. I ran a few tests in the emulator and concluded that the
+tradeoff was worth it. Although removing it ate 10-20% of the processor's
+performance in most of my test programs, this processor isn't really designed
+for computational prowess anyway, and the physical hardware cost was starting to
+look pretty significant. Without it, the datapath looks like this:
 
-* IRC client via old-school serial modem - requires learning a lot of different
-  protocols, and networking things never work
-* Scientific calculator - requires floating-point and/or high-precision math
-* Lisp interpreter - this one is pretty plausible; the only limitation is that
-  deep recursion requires some extra thought when you only have 256 bytes of
-  stack
-* Full-fledged DOS-style prompt - this would be a lot of fun, but also a *lot*
-  of added scope
+![Same datapath as before, with highlighted multiplexers removed](media/nandy/datapath-no-isp.png)
 
-In the end, the thing that convinced me was someone recommending that I try the
-classic text adventure Planetfall. Planetfall and the other Infocom games are
-especially interesting in that they may be the first games written using an
-engine and virtual machine, rather than direcly to assembly. Infocom games were
-written in a human-readable, Lisp-like language called ZIL, then compiled to a
-virtual-machine bytecode called Z-Machine. This means that any computer that can
-interpret Z-Machine bytecode can in theory run any Infocom game. Being a text
-adventure, I/O can just be a serial port, and the command set was simple enough
-to implement on 8-bit computers of the time like the Atari and Commodore 64.
-Perfect for my minimal CPU!
+So not a whole lot different, but a lot of wiring and gates have been removed.
+The main advantage that sold me on this is that it offers a new solution to my
+other nagging issue, configuring the I/O port. As well as cutting out a lot of
+physical complexity, removing `isp` also frees up the operation codes it
+consumed. Conveniently, the original `isp` operation code looked like this:
+
+```
+Bit:  7 6 5 4 3 2 1 0
+      0 0 1 c [ offs ]
+
+c: 1 if carry bit is set, 0 otherwise
+offs: 4-bit signed offset to apply to stack pointer
+```
+
+This can conveniently be repurposed as an I/O addressing function:
+
+```
+Bit:  7 6 5 4 3 2 1 0
+      0 0 1 [  addr  ]
+
+addr: Address of I/O device to select
+```
+
+The nice thing about this approach is that it's easy to assign a device a range
+of addresses; since I now have a consistent 5-bit address space, I can set up
+memory maps in much the same way you would on a Z80.
+
+A further challenge that I glossed over in my earlier discussion of I/O is
+handling multiple interrupts. I'm likely to have a slew of devices competing for
+the processor's attention at any given time, so I need some way to decide which
+the CPU will answer first. The traditional way of doing this is with a priority
+encoder - a device that takes in a whole bunch of interrupt lines, and outputs
+the address of the first one that's active. However, priority encoders require
+a pretty substantial number of chips to implement in NAND logic, and are pretty 
+overkill for my purposes. I'm pretty unlikely to need more than 8 different
+I/O devices, so why not just give the CPU a full list of every active interrupt
+and let it choose which to use?
+
+To avoid adding any extra instructions, I decided to make this list an I/O
+device of its own, which always resides at address `0b11111`. Thanks to the
+power of shift instructions, this even makes for a pretty slick
+interrupt-handling process:
+
+```
+ISR:
+  isp -3 # note: this is a macro now, implemented in the clunky way from earlier
+  strs 0 # stash the registers so we can restore the state at the end of the ISR
+  rd dx
+  strs 1
+  rd dy
+  strs 2
+
+  ioa 0b11111
+  rd io
+
+  sl    # Peek at the 0th bit; if it's 1, go to handler 0
+  ctog
+  jcz handler_0
+  sl    # Peek at the 1st bit; if it's 1, go to handler 1
+  ctog
+  jcz handler_1
+  ...
+
+isr_done: # handlers jump to here afterward
+  lds 2
+  wr dy
+  lds 1
+  wr dx
+  lds 0
+  jri # Clean up and exit interrupt
+```
+
+This brings up an interesting issue: it's created yet another piece of CPU state
+that might be messed up by an interrupt. Consider the following scenario:
+
+* I decide to read some data from permanent storage. I set the address of my
+  storage card, and start sending the storage request.
+* In the meantime, someone starts typing on the serial port. This sends an
+  interrupt to the CPU.
+* The CPU jumps to the interrupt and reads some data from the serial port, then
+  returns execution to me, with the registers just as I left them.
+* Seeing nothing wrong, I start writing my data to storage. Oops! I just sent
+  it to the serial port instead.
+
+There's a couple ways around this problem:
+
+* I could just not do anything, and make blocking interrupts mandatory for any
+  kind of I/O. This is an annoying thing to do and a performance and binary-size
+  hit, but it requires no actual work.
+* Interrupts could just force you to look at the interrupt mask, and all I/O
+  happens in "normal" code. This means the interrupt controller doesn't have to
+  borrow an I/O address, but it's really annoying to work with; it also kinda
+  defeats the purpose of having interrupts for a lot of things.
+* There could be two different interrupt address registers, one for normal code
+  and one for interrupts. This would be much easier to work with, but adds a lot
+  of hardware, which I'm really trying to avoid.
+
+Given these alternatives, I'm leaning toward option 1. I'm not too picky about
+the performance of this system, and I *should* have enough ROM space to throw at
+the issue to avoid any constraints there. 
