@@ -220,6 +220,36 @@ said was too complex originally after all.
 
 ![Processor datapath with increment-stack-pointer path highlighted, with arrows to three multiplexers used](media/nandy/datapath-isp.png)
 
+Most of the register-move instructions are made up of two parts, an incoming
+(red) and outgoing (yellow) path, which transfer data to and from the
+accumulator respectively. Using both paths at the same time results in a swap,
+and one or the other can be used to implement a simple move. (As an aside,
+internally, `nop` isn't actually its own instruction - it's just a register
+move where neither path is enabled.)
+
+![Processor datapath with register read and write paths highlighted](media/nandy/datapath-sw.png)
+
+The most complex thing we can do on a single cycle is make a function call. To
+do this, we have to do a couple things at the same time:
+
+* Read and decode the instruction. (green)
+* Combine the X and Y registers into an address, and load that as the next
+  program counter. (blue)
+* Calculate where the next program counter *would* be, and load that into the
+  X and Y registers. (red)
+
+This is where we finally do something interesting with the address calculator:
+
+![Processor datapath with jump to address and store return path highlighted](media/nandy/datapath-jar.png)
+
+I mentioned earlier that the processor doesn't support function calls on
+relative jumps; this is because there's only one 16-bit adder in the address
+calculator, and a relative function call needs to both add a relative offset to
+the program counter for the jump itself and add one to it to calculate the
+return address. In theory, this could be done on the same adder on two different
+cycles, but I decided that just using absolute jumps would be easier than
+dealing with added control complexity.
+
 ## The I/O Dilemma
 
 Here, we pause our regular programming (heh) to discuss the I/O situation a bit.
