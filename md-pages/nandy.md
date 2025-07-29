@@ -248,7 +248,39 @@ calculator, and a relative function call needs to both add a relative offset to
 the program counter for the jump itself and add one to it to calculate the
 return address. In theory, this could be done on the same adder on two different
 cycles, but I decided that just using absolute jumps would be easier than
-dealing with added control complexity.
+dealing with added control complexity. Of course, we can also use this to
+implement absolute jumps with no return address simply by turning off the
+return-address path.
+
+Beyond this point, we've exhausted everything that's possible in a single cycle
+and now have to move on to two-cycle instructions. The NANDy architecture is
+designed such that every cycle is some type of memory access, meaning that these
+instructions are ones that have to fetch or store something in addition to their
+opcode.
+
+The simplest two-cycle instructions are the immediate arithmetic operations:
+instructions that take the form `acc <= acc <op> constant`. These - and all
+other 2-cycle instructions - look more-or-less like a no-operation on their first
+cycle, and only use it to latch the value of the current instruction. This frees
+up the memory bus on the second cycle to allow it to provide the constant value:
+
+![Processor with memory-to-arithmetic and PC-increment highlighted; instruction fetch is notably absent](media/nandy/datapath-addi.png)
+
+Note that PC is still incremented as normal. Immediate instructions have their
+constant byte immediately following them in memory, so we can just keep on
+going as if they were two instructions.
+
+Relative jumps are also implemented this way. 4 bits of the instruction and the
+8-bit constant are combined to give a 12-bit offset range, and we can just use
+this value in place of incrementing by 1:
+
+![Processor with relative-jump path highlighted; jump is accomplished using same adder that would be used for PC increment](media/nandy/datapath-j.png)
+
+(You may notice that I've skipped conditional jumps here; those are mostly
+identical to normal relative jumps, with all the differences handwaved inside
+the control logic block.)
+
+
 
 ## The I/O Dilemma
 
