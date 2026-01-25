@@ -272,3 +272,8 @@ auipc ^P [  Rp  ] [   Rd    ]  1  1 [                           Immediate       
 makes hex dumps of the code much easier to read, as register numbers will always
 land on their own hex digit.)
 
+### Basic instruction shape
+
+Typically, a good strategy in designing an ISA is to form common instruction
+"shapes" - that is, put bits that are used for similar purposes in similar
+locations. In this architecture

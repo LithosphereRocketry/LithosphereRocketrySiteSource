@@ -185,7 +185,7 @@ written in a human-readable, Lisp-like language called ZIL, then compiled to a
 virtual-machine bytecode called Z-Machine. This means that any computer that can
 interpret Z-Machine bytecode can in theory run any Infocom game. Being a text
 adventure, I/O can just be a serial port, and the command set was simple enough
-to implement on 8-bit computers of the time like the Atari and Commodore 64.
+to implement on 8-bit computers of the time like the Atari 800 and Commodore 64.
 Perfect for my minimal CPU!
 
 ## The Datapath
@@ -364,8 +364,17 @@ overkill for my purposes. I'm pretty unlikely to need more than 8 different
 I/O devices, so why not just give the CPU a full list of every active interrupt
 and let it choose which to use?
 
-To avoid adding any extra instructions, I decided to make this list an I/O
-device of its own, which always resides at address `0b11111`. Thanks to the
+Originally, I wanted to avoid adding any extra instructions, so I decided to
+make this list an I/O device of its own, which always resides at address
+`0b11111`. Later, I backtracked on this and found a perfect candidate spot for a
+"poll interrupts" instruction: the "read immediate" instruction in register mode
+was just a weird way to do "read x" or "read y", which are already handled by
+the register transfer instructions. Instead, I found a way to integrate a
+multiplexer into the mess of hand-optimized logic I was using to implement the
+`rdi`, `and`, `or`, and `xor`, allowing the interrupt status to be polled
+without messing with the IO address register.
+
+Thanks to the
 power of shift instructions, this even makes for a pretty slick
 interrupt-handling process:
 
@@ -378,8 +387,7 @@ ISR:
   rd dy
   strs 2
 
-  ioa 0b11111
-  rd io
+  ipoll
 
   sl    # Peek at the 0th bit; if it's 1, go to handler 0
   ctog
@@ -419,10 +427,128 @@ There's a couple ways around this problem:
   happens in "normal" code. This means the interrupt controller doesn't have to
   borrow an I/O address, but it's really annoying to work with; it also kinda
   defeats the purpose of having interrupts for a lot of things.
-* There could be two different interrupt address registers, one for normal code
+* There could be two different I/O address registers, one for normal code
   and one for interrupts. This would be much easier to work with, but adds a lot
   of hardware, which I'm really trying to avoid.
 
-Given these alternatives, I'm leaning toward option 1. I'm not too picky about
-the performance of this system, and I *should* have enough ROM space to throw at
-the issue to avoid any constraints there. 
+Given these alternatives, I ended up leaning toward option 1. I'm not too picky
+about the performance of this system, and I *should* have enough ROM space to
+throw at the issue to avoid any constraints there. 
+
+## Writing some code
+
+At this point, I thought it would be best to start building up a library of
+software to get a sense for how the system would be to work with. I started with
+a function that would be useful for all sorts of software and should be fairly
+straightforward: `memcpy`. And wow, am I glad that I did this before I got
+further into the weeds.
+
+A generic `memcpy` pseudocode algorithm looks something like this:
+
+```
+loop:
+  if count == 0:
+    exit
+  mem[dst] = mem[src]
+  increment dst
+  increment src
+  decrement count
+  goto loop
+```
+
+So we have to keep track of three pointer-sized values, and increment or
+decrement each of them once per loop. In a normal processor, you'd be able to
+keep these all in registers and increment them each in one instruction. This
+is... not a normal processor. We have approximately one pointer-sized value of
+register space, and it will take a minimum of eight cycles to increment it:
+
+```
+  sw x
+  addi 1 # 2 cycles
+  sw x
+  sw y
+  addci 0 # 2 cycles
+  sw y
+```
+
+This means that basically all of our function data has to live on the stack,
+loading and writing back one byte at a time. Here's what the full implementation
+of memcpy looks like:
+
+```
+memcpy:
+    _isp -2
+    rd dx
+    strs 0
+    rd dy
+    strs 1
+
+memcpy_loop:
+    lds 7
+    zero
+    jcz memcpy_byte
+    lds 6
+    zero
+    jcz memcpy_byte
+
+    # if we fall through, then size is 0 and we exit
+    lds 1
+    wr dy
+    lds 0
+    wr dx
+    _isp 2
+    ja
+    
+memcpy_byte:
+    # decrement size
+    lds 6
+    subi 1
+    strs 6
+    lds 7
+    subci 0
+    strs 7
+
+    # copy byte
+    lds 4
+    wr x
+    lds 5
+    wr y
+    lda 0
+    wr y
+    lds 2
+    wr x
+    lds 3
+    sw y
+    stra 0
+
+    # increment pointers
+    rd x
+    addi 1
+    strs 2
+    rd y
+    addci 0
+    strs 3
+    lds 4
+    addi 1
+    strs 4
+    lds 5
+    addci 0
+    strs 5
+    j memcpy_loop
+```
+
+This code was not very pleasant to write, nor is it very pleasant to read. It
+works, but almost every useful operation is flanked by a load-from-stack and
+store-to-stack pair, taking two cycles each. At around 200 bytes, it's not very
+space-efficient, and at around 60 cycles per byte copied it's extremely slow as
+well.
+
+It was at this point that I realized that this wasn't really a practical
+architecture. Sure, I could make it work, but all of the code I would write
+going forward would be at least this ugly, and it just wasn't going to make the
+project any fun. Additionally, there were a lot of warts on this so-far simple
+architecture that I could really do with getting rid of.
+
+
+
+https://www.imdb.com/title/tt0158814/quotes/?item=qt0412749&ref_=ext_shr_lnk
