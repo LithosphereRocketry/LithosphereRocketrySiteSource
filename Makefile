@@ -10,7 +10,7 @@ DEPDIR = embed-deps
 
 DIRS = $(MDHDIR) $(TITLESDIR)
 
-PROJNAMES = website nandy mollusc-pt1 nanodeploy
+PROJNAMES = website nandy nandy-rework mollusc-pt1 nanodeploy
 ARTICLENAMES = cplusplus cromulent
 
 REGTARGETS = $(patsubst $(TEMPLATESDIR)/%,$(OUTDIR)/%,$(wildcard $(TEMPLATESDIR)/*.html))

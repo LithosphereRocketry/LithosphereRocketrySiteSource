@@ -93,11 +93,13 @@ distance was asking for trouble, so one per register it is.
 ## The Architecture
 
 For the architecture of this CPU, I went through quite a few iterations before
-settling on a final design - in my own notes, the current design is referred to
-as "architecture 4.5." The design takes a lot of impsiration from the MOS 6502,
-with an X and Y index register, accumulator, and 256-byte stack. However,
-compared to other 8-bit-era processors, it's a lot more RISC-ish: no indirect
-arithmetic operations, only separate loads and stores.
+settling on a final design - when I started this writeup, the design was
+referred to as "architecture 4.5," and it had reached "architecture 6.0" before
+I cut off this article and started on a part 2. The design takes a lot of
+inpsiration from the MOS 6502, with an X and Y index register, accumulator,
+and 256-byte stack. However, compared to other 8-bit-era processors, it's a lot
+more RISC-ish: no indirect arithmetic operations, only separate loads and
+stores.
 
 The core specs of the machine currently look something like this:
 
@@ -541,14 +543,54 @@ This code was not very pleasant to write, nor is it very pleasant to read. It
 works, but almost every useful operation is flanked by a load-from-stack and
 store-to-stack pair, taking two cycles each. At around 200 bytes, it's not very
 space-efficient, and at around 60 cycles per byte copied it's extremely slow as
-well.
+well. At this point, I was really starting to think about reworking the
+architecture, especially because of...
+
+## The Bad Parts
+
+As much as the datapath diagrams make this architecture look nice and simple,
+the more complete design contains some additional complexity (and, in
+retrospect, unforced errors.) Patient zero for this hidden mess was the
+interrupt handling system.
+
+When an interrupt occurs, the processor switches to a second copy of the X and Y
+registers and fills them with the return address of the interrupt. (You might
+imagine that "a second copy" implies additional hardware and control logic; you
+would be right.) These additional registers are seen by software as identical
+to the normal X and Y registers; the interrupt routine is responsible for
+pushing them to the stack and restoring them before returning.
+
+Of course, this means that the stack has to be valid any time that interrupts
+are enabled, and with no dedicated increment-stack-pointer instruction this
+means that interrupts get disabled and reenabled _very_ frequently. One way that
+I looked at working around this problem was to allocate two different stack
+areas, 0xFE00-0xFEFF for normal operation and 0xFF00-0xFFFF for interrupts.
+In theory, the value of the stack pointer at the moment we take an interrupt
+shouldn't matter, so long as we put it back as we found it - if we decrement it
+past 0, it'll wrap back around to FF. However, this approach has a subtle issue.
+
+This architecture has the ability to address memory with an offset, which is
+useful both for retrieving variables off the stack and for accessing members of
+a structure without having to constantly change the values in X and Y. For
+absolute addresses, we obviously want offsets to behave "correctly". If you
+ask for an offset that crosses a page boundary - say, 0x98FF plus 3 - it should
+wrap around to 0x9902, not truncate to 0x9802. However, for stack accesses this
+is a problem. Let's suppose an interrupt happens when the stack pointer is set
+to 0x01. We decrement it three bytes to back up our primary registers, yielding
+a stack pointer of 0xFE. Now we store a register with a stack offset of 2. Our
+base address is 0xFFFE, plus 2 is... 0x0000, the beginning of program memory.
+Oops. This can be fixed with some extremely finicky code to ensure that the
+stack pointer has room to work before we start using offsets, or it can be fixed
+by adding a "carry cut" gate in the address calculation system - I went with the
+hardware option after trying to make a functional interrupt handler in the other
+style and realizing just how miserable it was.
 
 It was at this point that I realized that this wasn't really a practical
 architecture. Sure, I could make it work, but all of the code I would write
 going forward would be at least this ugly, and it just wasn't going to make the
-project any fun. Additionally, there were a lot of warts on this so-far simple
-architecture that I could really do with getting rid of.
+project any fun. I had entered this design with the intent to minimize the
+amount of hardware I needed, but the hardware requirements had spiraled anyway,
+just without giving any benefit to the usability of the architecture. I needed
+a full-scale rework.
 
-
-
-https://www.imdb.com/title/tt0158814/quotes/?item=qt0412749&ref_=ext_shr_lnk
+To be continued...
