@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-OUTDIR = LithosphereRocketry.github.io
+OUTDIR = site
 MDHDIR = md-html
 MDDIR = md-pages
 TITLESDIR = titles
