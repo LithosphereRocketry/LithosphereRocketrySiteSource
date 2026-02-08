@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean deploy
 
 OUTDIR = site
 MDHDIR = md-html
@@ -7,6 +7,8 @@ TITLESDIR = titles
 PARTSDIR = parts
 TEMPLATESDIR = templates
 DEPDIR = embed-deps
+DEPLOYDIR = /var/www/lithos.cc
+WEBUSER = web
 
 DIRS = $(MDHDIR) $(TITLESDIR)
 
@@ -42,3 +44,7 @@ $(REGTARGETS): $(OUTDIR)/%: $(TEMPLATESDIR)/% $(TITLESDIR)/% $(PARTS) buildpage.
 
 clean:
 	rm -r $(DIRS) $(REGTARGETS) $(PROJTARGETS) $(PYGMENT)
+
+deploy: $(DEPLOYDIR) all
+	cp -r $(OUTDIR)/* $(DEPLOYDIR)
+	chown -R $(WEBUSER):$(WEBUSER) $(DEPLOYDIR)
