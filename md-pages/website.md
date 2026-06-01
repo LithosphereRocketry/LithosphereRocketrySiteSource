@@ -215,3 +215,16 @@ pages need to be built; it's fairly tailored to my specific layout and requires
 a reasonable number of GNU-specific extensions. If you're looking to use this
 whole system in your own project, you could probably adapt it, but it may not be
 completely plug-and-play.
+
+## Update: Cutting the cord
+
+After one too many annoyances getting my weird setup to behave with Github Sites
+I resolved to get the site hosted on my own hardware. I set aside a whole
+afternoon to fight with configurations to get it working, installed nginx... and
+it worked on the first try. Well, there's a first time for everything, I
+suppose.
+
+It's not _completely_ self hosted because my internet setup doesn't allow that,
+so I'm still reliant on Cloudflare's tunnels to actually allow connections to
+the real world, but it's still a major improvement over the jank that is Github
+Sites.
