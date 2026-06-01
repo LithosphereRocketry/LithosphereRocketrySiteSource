@@ -112,6 +112,8 @@ out the necessary commands. It also has the convenience that it hasn't (yet)
 been removed from JLCPCB's budget assembly service like most other barometers
 have, knocking a good $20 off my prototyping cost.
 
+(Update, JLC has removed this part from its economic assembly options. Drat.)
+
 ### Pyrotechnics
 
 This is another place where my job was not too difficult. For the pyrotechnics
