@@ -2,7 +2,7 @@
 
 Some time ago I embarked on the NANDy project, whose goal was to produce a
 somewhat useful CPU from only NAND gates. The early parts of the project can be
-found (here)[nandy-pt1.html].
+found [here](nandy-pt1.html).
 
 To make a long story short, the initial design was not very successful, but it
 had some good ideas. Now that I'm embarking on a new design, I want to keep a
