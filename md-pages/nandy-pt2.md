@@ -144,7 +144,7 @@ one as a software interrupt, which is not hugely useful but might be neat as a
 debug tool, and left the other blank for now. Unfortunately, these slots aren't
 much good for the instructions we still need to fit in. 96 slots remain.
 
-![The same spreadsheet with the addition of register move and miscellaneous instructions discussed above](media/nandy/v7-isa-move.png)
+![The same spreadsheet with the addition of register move and miscellaneous instructions discussed above](media/nandy/v7-isa-moves.png)
 
 ## Using every cycle
 
