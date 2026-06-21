@@ -12,7 +12,7 @@ WEBUSER = web
 
 DIRS = $(MDHDIR) $(TITLESDIR)
 
-PROJNAMES = website nandy nandy-rework mollusc-pt1 nanodeploy
+PROJNAMES = website nandy-pt1 nandy-pt2 mollusc-pt1 nanodeploy
 ARTICLENAMES = cplusplus cromulent
 
 REGTARGETS = $(patsubst $(TEMPLATESDIR)/%,$(OUTDIR)/%,$(wildcard $(TEMPLATESDIR)/*.html))

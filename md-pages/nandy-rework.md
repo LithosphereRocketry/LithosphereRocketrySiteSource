@@ -1,3 +1,0 @@
-# NANDy, part 2
-
-
