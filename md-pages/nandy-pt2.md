@@ -88,7 +88,7 @@ comes out to about 3% of the CPU, definitely worth a small inconvenience.)
 With a tear in our eye we wave goodbye to half of our opcode space and move on
 to trying to fit everything into the remaining half. 128 slots remain.
 
-!(A spreadsheet showing encoding for two instructions, ld and st.)[media/nandy/v7-isa-memory.png]
+![A spreadsheet showing encoding for two instructions, ld and st.](media/nandy/v7-isa-memory.png)
 
 ## More registers
 
@@ -144,7 +144,7 @@ one as a software interrupt, which is not hugely useful but might be neat as a
 debug tool, and left the other blank for now. Unfortunately, these slots aren't
 much good for the instructions we still need to fit in. 96 slots remain.
 
-!(The same spreadsheet with the addition of register move and miscellaneous instructions discussed above)[media/nandy/v7-isa-move.png]
+![The same spreadsheet with the addition of register move and miscellaneous instructions discussed above](media/nandy/v7-isa-move.png)
 
 ## Using every cycle
 
@@ -195,7 +195,7 @@ without conditionals, and with or without return address. With three bits of
 the jump offset in the instruction, that uses a 5-bit segment, or 32 slots. 64
 slots remain.
 
-!(The same spreadsheet with the addition of relative jump instructions)[media/nandy/v7-isa-jumps.png]
+![The same spreadsheet with the addition of relative jump instructions](media/nandy/v7-isa-jumps.png)
 
 ## What's left
 
@@ -280,7 +280,7 @@ diagram represent bits that don't encode anything - in theory, this would allow
 us to add even more operations but realistically I don't think we need any more.
 Instead, we can save a few gates by not including them in the decoding logic.
 
-!(The same spreadsheet with the addition of relative jump instructions)[media/nandy/v7-isa-all.png]
+![The same spreadsheet with the addition of arithmetic instructions](media/nandy/v7-isa-all.png)
 
 And there we go. A nice, simple, cozy ISA for a new and improved NANDy
 architecture.
